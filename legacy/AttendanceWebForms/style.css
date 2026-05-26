@@ -1,0 +1,260 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: content-box;
+}
+
+body {
+    background-color: #d4d0c8;
+    font-family: Arial, "MS UI Gothic", "ＭＳ ゴシック", Verdana, sans-serif;
+    font-size: 13px;
+    color: #000000;
+}
+
+#form1 {
+    width: 640px;
+    margin: 0 auto;
+    padding: 10px;
+}
+
+/* ヘッダー: 典型的なWebForms MasterPage の青グラデ */
+.page-header {
+    background: linear-gradient(to bottom, #0a246a 0%, #3a6ea8 100%);
+    color: #ffffff;
+    padding: 7px 12px;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+    border: 1px solid #0a246a;
+}
+
+.page-header span {
+    font-size: 11px;
+    font-weight: normal;
+    margin-left: 12px;
+    opacity: 0.85;
+}
+
+/* パネル: WebForms Panel コントロール相当 */
+.panel {
+    background-color: #ece9d8;
+    border: 1px solid #7f9db9;
+    margin-bottom: 10px;
+    padding: 0;
+}
+
+.panel-title {
+    background: #d4d0c8;
+    border-bottom: 1px solid #7f9db9;
+    padding: 4px 10px;
+    font-weight: bold;
+    font-size: 12px;
+    color: #0a246a;
+}
+
+.panel-body {
+    padding: 10px;
+}
+
+/* フォームテーブル */
+table.form-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+table.form-table td {
+    padding: 4px 6px;
+    vertical-align: middle;
+}
+
+.label-cell {
+    width: 110px;
+    text-align: right;
+    padding-right: 8px;
+    white-space: nowrap;
+}
+
+/* テキストボックス */
+input[type="text"] {
+    border: 2px inset #7f9db9;
+    background: #ffffff;
+    padding: 2px 4px;
+    font-family: Arial, "MS UI Gothic", sans-serif;
+    font-size: 13px;
+    height: 20px;
+}
+
+/* ドロップダウン */
+select {
+    border: 2px inset #7f9db9;
+    background: #ffffff;
+    padding: 1px 2px;
+    font-family: Arial, "MS UI Gothic", sans-serif;
+    font-size: 13px;
+    height: 24px;
+}
+
+/* AutoPostBack ラベル */
+.autopostback-note {
+    font-size: 10px;
+    color: #808080;
+    margin-left: 4px;
+}
+
+/* Windows Classic ボタン */
+.btn {
+    background-color: #d4d0c8;
+    border-top: 2px solid #ffffff;
+    border-left: 2px solid #ffffff;
+    border-right: 2px solid #404040;
+    border-bottom: 2px solid #404040;
+    outline: 1px solid #000000;
+    outline-offset: -2px;
+    padding: 3px 10px;
+    font-family: Arial, "MS UI Gothic", sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    min-width: 88px;
+    color: #000000;
+    text-align: center;
+}
+
+.btn:hover:not(:disabled) {
+    background-color: #e0ddd4;
+}
+
+.btn:active:not(:disabled) {
+    border-top: 2px solid #404040;
+    border-left: 2px solid #404040;
+    border-right: 2px solid #ffffff;
+    border-bottom: 2px solid #ffffff;
+    padding: 4px 9px 2px 11px;
+}
+
+.btn:disabled {
+    color: #808080;
+    cursor: default;
+}
+
+/* ボタン列 */
+.btn-row {
+    display: flex;
+    gap: 8px;
+    padding: 6px 0;
+}
+
+/* 集計テーブル */
+table.stats-table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 4px;
+}
+
+table.stats-table td {
+    padding: 4px 10px;
+    border: 1px solid #7f9db9;
+    font-size: 13px;
+}
+
+table.stats-table .stat-label {
+    background: #d4d0c8;
+    font-weight: bold;
+    width: 160px;
+}
+
+table.stats-table .stat-value {
+    background: #ffffff;
+    font-family: "Courier New", monospace;
+}
+
+/* ステータスメッセージ (UpdatePanel的な) */
+.status-message {
+    background: #ffffc0;
+    border: 1px solid #c0b000;
+    padding: 4px 10px;
+    margin-top: 8px;
+    font-size: 12px;
+}
+
+.status-message.hidden {
+    display: none;
+}
+
+/* PostBack オーバーレイ (白フラッシュ) */
+#postback-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #ffffff;
+    z-index: 9999;
+}
+
+/* フッター */
+.page-footer {
+    border-top: 1px solid #7f9db9;
+    padding-top: 6px;
+    margin-top: 4px;
+    text-align: center;
+    font-size: 11px;
+    color: #808080;
+}
+
+/* ViewState 展開エリア */
+.viewstate-section {
+    margin-top: 14px;
+}
+
+.viewstate-toggle {
+    background: none;
+    border: none;
+    color: #0000cc;
+    text-decoration: underline;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+    padding: 0;
+}
+
+.viewstate-toggle:hover {
+    color: #cc0000;
+}
+
+.viewstate-box {
+    display: none;
+    margin-top: 6px;
+    border: 1px solid #7f9db9;
+    background: #ffffff;
+    padding: 8px;
+}
+
+.viewstate-box table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.viewstate-box td {
+    padding: 3px 6px;
+    border: 1px solid #d0d0d0;
+    vertical-align: top;
+}
+
+.viewstate-box .vs-key {
+    background: #ece9d8;
+    font-weight: bold;
+    white-space: nowrap;
+    width: 200px;
+}
+
+.viewstate-box .vs-val {
+    font-family: "Courier New", monospace;
+    font-size: 10px;
+    word-break: break-all;
+    color: #333;
+    max-height: 60px;
+    overflow: hidden;
+}

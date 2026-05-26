@@ -1,0 +1,374 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>勤怠打刻画面 - 社内勤怠管理システム</title>
+    <link rel="stylesheet" type="text/css" href="style.css" />
+    <script type="text/javascript">
+    // WebForms が自動生成する __doPostBack 関数
+    var theForm;
+    function __doPostBack(eventTarget, eventArgument) {
+        if (!theForm.onsubmit || (theForm.onsubmit() != false)) {
+            theForm.__EVENTTARGET.value = eventTarget;
+            theForm.__EVENTARGUMENT.value = eventArgument;
+            theForm.submit();
+        }
+    }
+    </script>
+</head>
+<body>
+
+<!-- PostBack 白フラッシュ: ページ全体を一瞬白くする -->
+<div id="postback-overlay"></div>
+
+<form name="aspnetForm" method="post" action="Attendance.aspx" id="form1">
+
+<!-- ===== WebForms ViewState (隠しフィールド群) ===== -->
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE"
+    value="/wEPDwUKMTYxNjA4MDY5Mg9kFgJmD2QWAgIBD2QWBgIBD2QWAgIDDxYCHgRUZXh0BR3
+liIbpmpTkvb/ln5/nrqHnkIblkozln5/nrqHkv6EFIjIwMjYvMDUvMjYg6KKL5YW75oyBCgppZWxk
+AgMPFgIeBFRleHQFBjEyIOaXpWRkAgUPFgIeBFRleHQFCjk2LjAg5pmCZGQCBw8WAh4EVGVzdAUG
+MTYuMCBkZAIJD2QWAgIDDxYCHgRUZXh0BR8yMDI2LzA1LzI2IDEyOjAyOjQ3IC0g5Ye65YuVZGQC
+Cw9kFgICCw8WAh4HVmlzaWJsZWhkFgQCAQ9kFgICCQ8WAh4EVGVzdAUG6ZaL6K2wZGQCAw9kFgIC
+Cw8WAh4HVmlzaWJsZWhkZBgBBR5fX0NvbnRyb2xzUmVxdWlyZVBvc3RCYWNrS2V5X18WAQUVY3Rs
+MDBfZGRsRGVwYXJ0bWVudA==" />
+<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="CA0B0334" />
+<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION"
+    value="/wEdABEFxPT3Mqtm1rGpJ0vN3E1kYpbV8W+hWblk2U9a7dNyQhLmFuZ3D8sH6KQwR7
+mK3VzN1lQaKpJxnFVeWd4oRkKpZnHaTxRvL8sE6JkYW2bNmQvCpDrF3wXL5tNVcOuIqK9nE==" />
+<input type="hidden" name="__EVENTTARGET" id="__EVENTTARGET" value="" />
+<input type="hidden" name="__EVENTARGUMENT" id="__EVENTARGUMENT" value="" />
+<!-- ===================================================== -->
+
+<div id="form1">
+
+    <!-- ヘッダー -->
+    <div class="page-header">
+        社内勤怠管理システム
+        <span>勤怠打刻画面 (Attendance.aspx)</span>
+    </div>
+
+    <!-- ===== パネル1: 社員情報 ===== -->
+    <div class="panel">
+        <div class="panel-title">■ 社員情報</div>
+        <div class="panel-body">
+            <table class="form-table">
+                <tr>
+                    <td class="label-cell">社員番号：</td>
+                    <td>
+                        <input type="text" name="ctl00$ContentPlaceHolder1$txtEmployeeId"
+                            id="ctl00_ContentPlaceHolder1_txtEmployeeId"
+                            value="EMP-001" size="12" />
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label-cell">部署：</td>
+                    <td>
+                        <select name="ctl00$ContentPlaceHolder1$ddlDepartment"
+                            id="ctl00_ContentPlaceHolder1_ddlDepartment"
+                            onchange="ddlDepartment_Change(this)">
+                            <option value="">-- 選択 --</option>
+                            <option value="dev" selected="selected">開発部</option>
+                            <option value="sales">営業部</option>
+                            <option value="admin">総務部</option>
+                        </select>
+                        <span class="autopostback-note">※ AutoPostBack=true</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label-cell">社員名：</td>
+                    <td>
+                        <span id="ctl00_ContentPlaceHolder1_lblEmployeeName">山田 太郎</span>
+                    </td>
+                </tr>
+                <tr id="trEmployeeList">
+                    <td class="label-cell">社員一覧：</td>
+                    <td>
+                        <select name="ctl00$ContentPlaceHolder1$ddlEmployee"
+                            id="ctl00_ContentPlaceHolder1_ddlEmployee"
+                            size="3" style="width:200px; height:auto;"
+                            onchange="ddlEmployee_Change(this)">
+                            <option value="EMP-001" selected="selected">EMP-001 山田 太郎</option>
+                            <option value="EMP-002">EMP-002 鈴木 花子</option>
+                            <option value="EMP-003">EMP-003 田中 一郎</option>
+                        </select>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- ===== パネル2: 打刻操作 ===== -->
+    <div class="panel">
+        <div class="panel-title">■ 打刻操作</div>
+        <div class="panel-body">
+            <div class="btn-row" id="clockButtons">
+                <button type="button" class="btn" id="btnClockIn"
+                    onclick="clockAction('出勤')">出勤</button>
+                <button type="button" class="btn" id="btnClockOut"
+                    onclick="clockAction('退勤')">退勤</button>
+                <button type="button" class="btn" id="btnBreakStart"
+                    onclick="clockAction('休憩開始')">休憩開始</button>
+                <button type="button" class="btn" id="btnBreakEnd"
+                    onclick="clockAction('休憩終了')">休憩終了</button>
+            </div>
+            <div class="status-message hidden" id="clockStatus"></div>
+        </div>
+    </div>
+
+    <!-- ===== パネル3: 今月の集計 ===== -->
+    <!-- Page_Load のたびに DB 集計クエリが走る領域 -->
+    <div class="panel">
+        <div class="panel-title">■ 今月の集計</div>
+        <div class="panel-body">
+            <table class="stats-table">
+                <tr>
+                    <td class="stat-label">対象年月</td>
+                    <td class="stat-value" id="statYearMonth">2026年05月</td>
+                </tr>
+                <tr>
+                    <td class="stat-label">出勤日数</td>
+                    <td class="stat-value" id="statDays">12 日</td>
+                </tr>
+                <tr>
+                    <td class="stat-label">合計勤務時間</td>
+                    <td class="stat-value" id="statHours">96.0 時間</td>
+                </tr>
+                <tr>
+                    <td class="stat-label">残業時間</td>
+                    <td class="stat-value" id="statOvertime">16.0 時間</td>
+                </tr>
+                <tr>
+                    <td class="stat-label">最終打刻</td>
+                    <td class="stat-value" id="statLastClock">2026/05/26 09:02:47 - 出勤</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- ===== パネル4: レポート出力 ===== -->
+    <div class="panel">
+        <div class="panel-title">■ 月次レポート</div>
+        <div class="panel-body">
+            <table class="form-table">
+                <tr>
+                    <td class="label-cell">出力年月：</td>
+                    <td>
+                        <input type="text" name="ctl00$ContentPlaceHolder1$txtReportMonth"
+                            id="ctl00_ContentPlaceHolder1_txtReportMonth"
+                            value="202605" size="8" />
+                        &nbsp;
+                        <button type="button" class="btn" id="btnReport"
+                            onclick="downloadReport()">月次レポート出力</button>
+                    </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <span id="reportNote" class="autopostback-note"
+                            style="display:none; color:#cc0000;">
+                            ※ Response.Write で CSV を直接ストリーム出力しています
+                        </span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- ===== ViewState 展開エリア ===== -->
+    <div class="viewstate-section">
+        <button type="button" class="viewstate-toggle"
+            onclick="toggleViewState()">▶ ページソース内の隠しフィールドを確認する</button>
+        <div class="viewstate-box" id="viewstateBox">
+            <table>
+                <tr>
+                    <td class="vs-key">__VIEWSTATE</td>
+                    <td class="vs-val">/wEPDwUKMTYxNjA4MDY5Mg9kFgJmD2QWAgIBD2QWBgIBD2QWAgIDDxYCHgRUZXh0BR3liIbpmpTkvb/ln5/nrqHnkIblkozln5/nrqHkv6EFIjIwMjYvMDUvMjYg6KKL5YW75oyBCgppZWxkAgMPFgIeBFRleHQFBjEyIOaXpWRkAgUPFgIeBFRleHQFCjk2LjAg5pmCZGQCBw8WAh4EVGVzdAUGMTYuMCBkZAIJD2QWAgIDDxYCHgRUZXh0BR8yMDI2LzA1LzI2IDEyOjAyOjQ3IC0g5Ye65YuVZGQCCw9kFgICCw8WAh4HVmlzaWJsZWhkFgQCAQ9kFgICCQ8WAh4EVGVzdAUG6ZaL6K2wZGQCAw9kFgICCw8WAh4HVmlzaWJsZWhkZBgBBR5fX0NvbnRyb2xzUmVxdWlyZVBvc3RCYWNrS2V5X18WAQUVY3RsMDBfZGRsRGVwYXJ0bWVudA==</td>
+                </tr>
+                <tr>
+                    <td class="vs-key">__VIEWSTATEGENERATOR</td>
+                    <td class="vs-val">CA0B0334</td>
+                </tr>
+                <tr>
+                    <td class="vs-key">__EVENTVALIDATION</td>
+                    <td class="vs-val">/wEdABEFxPT3Mqtm1rGpJ0vN3E1kYpbV8W+hWblk2U9a7dNyQhLmFuZ3D8sH6KQwR7mK3VzN1lQaKpJxnFVeWd4oRkKpZnHaTxRvL8sE6JkYW2bNmQvCpDrF3wXL5tNVcOuIqK9nE==</td>
+                </tr>
+            </table>
+            <p style="margin-top:8px; font-size:11px; color:#808080;">
+                ※ これらのフィールドはすべてのリクエストに含まれます。<br>
+                　 打刻履歴・集計データを ViewState に保持するため、リクエストサイズが膨張します。
+            </p>
+        </div>
+    </div>
+
+    <!-- フッター -->
+    <div class="page-footer">
+        社内勤怠管理システム v2.3.1 &nbsp;|&nbsp; ASP.NET WebForms &nbsp;|&nbsp; © 2012 総務部 情報システム課
+    </div>
+
+</div><!-- /#form1 -->
+</form>
+
+<script type="text/javascript">
+// ================================================================
+// 部署データ: AutoPostBack で社員リストを書き換える
+// ================================================================
+var EMPLOYEE_DATA = {
+    'dev':   [['EMP-001','山田 太郎'], ['EMP-002','鈴木 花子'], ['EMP-003','田中 一郎']],
+    'sales': [['EMP-004','佐藤 次郎'], ['EMP-005','伊藤 三郎']],
+    'admin': [['EMP-006','高橋 四郎'], ['EMP-007','中村 五郎']]
+};
+
+var STATS_DATA = {
+    'EMP-001': { days:12, hours:96.0, overtime:16.0 },
+    'EMP-002': { days:11, hours:88.0, overtime: 8.0 },
+    'EMP-003': { days:13, hours:104.0, overtime:24.0 },
+    'EMP-004': { days:10, hours:80.0, overtime: 0.0 },
+    'EMP-005': { days:12, hours:96.0, overtime:16.0 },
+    'EMP-006': { days:11, hours:88.0, overtime: 0.0 },
+    'EMP-007': { days:10, hours:80.0, overtime: 8.0 }
+};
+
+// 現在選択中の社員
+var currentEmployee = 'EMP-001';
+var clockCount = 12;
+
+// ================================================================
+// AutoPostBack シミュレーション
+// 部署ドロップダウン変更 → 白フラッシュ + スクロールリセット + 社員リスト更新
+// Page_Load が走るので集計も再取得される
+// ================================================================
+function ddlDepartment_Change(sel) {
+    var dept = sel.value;
+    if (!dept) return;
+
+    // 白フラッシュ開始 (ブラウザのページ遷移に近い演出)
+    var overlay = document.getElementById('postback-overlay');
+    overlay.style.display = 'block';
+
+    // スクロールトップ (PostBack 後のリセット)
+    window.scrollTo(0, 0);
+
+    setTimeout(function() {
+        // 社員リスト更新
+        var ddl = document.getElementById('ctl00_ContentPlaceHolder1_ddlEmployee');
+        ddl.innerHTML = '';
+        var employees = EMPLOYEE_DATA[dept] || [];
+        for (var i = 0; i < employees.length; i++) {
+            var opt = document.createElement('option');
+            opt.value = employees[i][0];
+            opt.text  = employees[i][0] + ' ' + employees[i][1];
+            if (i === 0) opt.selected = true;
+            ddl.appendChild(opt);
+        }
+
+        // 先頭社員を選択状態に
+        if (employees.length > 0) {
+            currentEmployee = employees[0][0];
+            document.getElementById('ctl00_ContentPlaceHolder1_lblEmployeeName').textContent
+                = employees[0][1];
+        }
+
+        // Page_Load が走った扱いで集計も更新
+        updateStats(currentEmployee);
+
+        // ステータスメッセージ非表示に (PostBack でリセットされる)
+        document.getElementById('clockStatus').className = 'status-message hidden';
+
+        overlay.style.display = 'none';
+    }, 550);
+}
+
+// 社員リストの選択変更
+function ddlEmployee_Change(sel) {
+    currentEmployee = sel.value;
+    var text = sel.options[sel.selectedIndex].text;
+    var name = text.replace(/^EMP-\d+\s*/, '');
+    document.getElementById('ctl00_ContentPlaceHolder1_lblEmployeeName').textContent = name;
+    updateStats(currentEmployee);
+}
+
+// ================================================================
+// 打刻ボタン PostBack シミュレーション
+// クリック → 全ボタン無効化 → 遅延 (Page_Load + DB書き込み) → 集計再実行
+// ================================================================
+function clockAction(action) {
+    var buttons = document.querySelectorAll('#clockButtons .btn');
+    for (var i = 0; i < buttons.length; i++) {
+        buttons[i].disabled = true;
+    }
+
+    var statusEl = document.getElementById('clockStatus');
+    statusEl.className = 'status-message hidden';
+
+    // PostBack 中: ブラウザが固まる感じ (spinner なし)
+    setTimeout(function() {
+        clockCount++;
+
+        // 打刻記録後、Page_Load で集計クエリが走り直す
+        var now = new Date();
+        var ts = now.getFullYear() + '/' +
+            pad(now.getMonth()+1) + '/' + pad(now.getDate()) + ' ' +
+            pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+
+        document.getElementById('statLastClock').textContent = ts + ' - ' + action;
+        updateStats(currentEmployee, action);
+
+        statusEl.textContent = action + ' を記録しました。(' + ts + ')';
+        statusEl.className = 'status-message';
+
+        for (var i = 0; i < buttons.length; i++) {
+            buttons[i].disabled = false;
+        }
+    }, 650);
+}
+
+// ================================================================
+// 集計表示更新 (Page_Load の DB 集計クエリ相当)
+// ================================================================
+function updateStats(empId, action) {
+    var s = STATS_DATA[empId];
+    if (!s) return;
+    var days = s.days;
+    var hours = s.hours;
+    if (action === '出勤') {
+        days += 1;
+        hours += 8.0;
+    }
+    document.getElementById('statDays').textContent     = days + ' 日';
+    document.getElementById('statHours').textContent    = hours.toFixed(1) + ' 時間';
+    document.getElementById('statOvertime').textContent = s.overtime.toFixed(1) + ' 時間';
+}
+
+// ================================================================
+// 月次レポート出力 (Response.Write CSV ダウンロード)
+// ================================================================
+function downloadReport() {
+    document.getElementById('reportNote').style.display = 'inline';
+    // Shift-JIS CSV: 文字化けの原因
+    window.location.href = 'report.csv';
+}
+
+// ================================================================
+// ViewState 展開トグル
+// ================================================================
+function toggleViewState() {
+    var box = document.getElementById('viewstateBox');
+    var btn = document.querySelector('.viewstate-toggle');
+    if (box.style.display === 'block') {
+        box.style.display = 'none';
+        btn.textContent = '▶ ページソース内の隠しフィールドを確認する';
+    } else {
+        box.style.display = 'block';
+        btn.textContent = '▼ ページソース内の隠しフィールドを確認する';
+    }
+}
+
+// ================================================================
+// ユーティリティ
+// ================================================================
+function pad(n) { return n < 10 ? '0' + n : '' + n; }
+</script>
+
+</body>
+</html>
