@@ -1,29 +1,46 @@
 import { useState, useEffect } from 'react'
-import { ClockPanel } from './components/ClockPanel'
+import { ClockPanel }    from './components/ClockPanel'
 import { MonthlySummary } from './components/MonthlySummary'
 import { AttendanceHistory } from './components/AttendanceHistory'
-import { api } from './api'
+import { AdminPanel }    from './components/AdminPanel'
+import { api }           from './api'
 import type { Employee } from './types'
 
-type Tab = 'clock' | 'summary' | 'history'
+type Tab = 'clock' | 'summary' | 'history' | 'admin'
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'clock',   label: '打刻' },
   { key: 'summary', label: '月次サマリー' },
   { key: 'history', label: '打刻履歴' },
+  { key: 'admin',   label: '管理' },
 ]
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('clock')
+  const [tab, setTab]           = useState<Tab>('clock')
   const [employees, setEmployees] = useState<Employee[]>([])
   const [selectedId, setSelectedId] = useState('')
+  const [token, setToken]       = useState<string | null>(
+    () => localStorage.getItem('admin_token')
+  )
+
+  const isAdmin = token !== null
 
   useEffect(() => {
-    api.getEmployees().then((data: Employee[]) => {
+    api.getEmployees().then(data => {
       setEmployees(data)
       if (data.length > 0) setSelectedId(data[0].id)
     })
   }, [])
+
+  const handleLogin = (newToken: string) => {
+    localStorage.setItem('admin_token', newToken)
+    setToken(newToken)
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('admin_token')
+    setToken(null)
+  }
 
   const selectedEmployee = employees.find(e => e.id === selectedId)
 
@@ -34,7 +51,20 @@ export default function App() {
           <span className="text-xl">🕐</span>
           <span className="font-semibold text-lg">勤怠管理システム</span>
         </div>
-        <span className="text-emerald-400 text-sm">● DB: Online</span>
+        <div className="flex items-center gap-3">
+          {isAdmin && (
+            <>
+              <span className="text-amber-400 text-sm">● 管理者モード</span>
+              <button
+                onClick={handleLogout}
+                className="text-slate-300 hover:text-white text-sm px-3 py-1 border border-slate-600 rounded hover:border-slate-400 transition-colors"
+              >
+                ログアウト
+              </button>
+            </>
+          )}
+          <span className="text-emerald-400 text-sm">● DB: Online</span>
+        </div>
       </header>
 
       <nav className="bg-white border-b border-slate-200">
@@ -50,6 +80,9 @@ export default function App() {
               }`}
             >
               {t.label}
+              {t.key === 'admin' && isAdmin && (
+                <span className="ml-1.5 text-amber-500 text-xs">●</span>
+              )}
             </button>
           ))}
         </div>
@@ -73,7 +106,12 @@ export default function App() {
           <AttendanceHistory
             employeeId={selectedId}
             employeeName={selectedEmployee?.name ?? ''}
+            isAdmin={isAdmin}
+            token={token}
           />
+        )}
+        {tab === 'admin' && (
+          <AdminPanel token={token} onLogin={handleLogin} />
         )}
       </main>
 

@@ -21,3 +21,14 @@ export interface MonthlySummary {
   totalHours: number
   overtimeHours: number
 }
+
+export interface MonthlyPayroll {
+  employeeId: string
+  year: number
+  month: number
+  totalHours: number
+  overtimeHours: number
+  regularPay: number
+  overtimePay: number
+  totalPay: number
+}
