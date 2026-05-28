@@ -15,7 +15,6 @@ public record AttendanceLogDto(
 
 public record ClockInRequest(string EmployeeId);
 public record ClockOutRequest(string EmployeeId);
-
 public record CorrectAttendanceRequest(DateTime ClockIn, DateTime ClockOut);
 
 public record MonthlySummaryDto(
@@ -128,56 +127,15 @@ public class AttendanceService
     public async Task<MonthlySummaryDto> GetMonthlyAsync(string employeeId, int year, int month)
     {
         var logs = await GetMonthlyLogsAsync(employeeId, year, month);
-        var employee = await GetEmployeeRecordAsync(employeeId);
-
-        var workDays = 0;
-        var totalMinutes = 0m;
-        var overtimeMinutes = 0m;
-
-        foreach (var log in logs)
-        {
-            if (log.ClockIn == null || log.ClockOut == null) continue;
-            workDays++;
-            var workedMin = (decimal)(log.ClockOut.Value - log.ClockIn.Value).TotalMinutes;
-            var rounded = RoundMinutes(workedMin, employee.RoundUnitMinutes);
-            totalMinutes += rounded;
-            overtimeMinutes += Math.Max(0, rounded - 480);
-        }
-
-        return new MonthlySummaryDto(
-            employeeId, year, month, workDays,
-            Math.Round(totalMinutes / 60, 2),
-            Math.Round(overtimeMinutes / 60, 2)
-        );
+        var emp  = await GetEmployeeRecordAsync(employeeId);
+        return AttendanceCalculator.CalcSummary(employeeId, year, month, logs, emp.RoundUnitMinutes);
     }
 
     public async Task<MonthlyPayrollDto> CalcMonthlyPayrollAsync(string employeeId, int year, int month)
     {
         var logs = await GetMonthlyLogsAsync(employeeId, year, month);
-        var employee = await GetEmployeeRecordAsync(employeeId);
-
-        var totalMinutes = 0m;
-        var overtimeMinutes = 0m;
-
-        foreach (var log in logs)
-        {
-            if (log.ClockIn == null || log.ClockOut == null) continue;
-            var workedMin = (decimal)(log.ClockOut.Value - log.ClockIn.Value).TotalMinutes;
-            var rounded = RoundMinutes(workedMin, employee.RoundUnitMinutes);
-            totalMinutes += rounded;
-            overtimeMinutes += Math.Max(0, rounded - 480);
-        }
-
-        var regularMinutes = totalMinutes - overtimeMinutes;
-        var regularPay  = Math.Round(regularMinutes  / 60 * employee.HourlyWage, 0);
-        var overtimePay = Math.Round(overtimeMinutes / 60 * employee.HourlyWage * 1.25m, 0);
-
-        return new MonthlyPayrollDto(
-            employeeId, year, month,
-            Math.Round(totalMinutes / 60, 2),
-            Math.Round(overtimeMinutes / 60, 2),
-            regularPay, overtimePay, regularPay + overtimePay
-        );
+        var emp  = await GetEmployeeRecordAsync(employeeId);
+        return AttendanceCalculator.CalcPayroll(employeeId, year, month, logs, emp.HourlyWage, emp.RoundUnitMinutes);
     }
 
     public async Task<byte[]> ExportMonthlyCsvAsync(string employeeId, int year, int month)
@@ -194,10 +152,6 @@ public class AttendanceService
         }
         return Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
     }
-
-    // --- private ---
-    private static decimal RoundMinutes(decimal minutes, int unit) =>
-        Math.Floor(minutes / unit) * unit;
 
     private async Task<IEnumerable<AttendanceLogDto>> GetMonthlyLogsAsync(string employeeId, int year, int month)
     {
