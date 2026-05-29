@@ -1,18 +1,16 @@
 namespace AttendanceApi.Tests;
-
 public class AttendanceCalculatorTests
 {
-    private static AttendanceLogDto Log(int id, DateTime clockIn, DateTime clockOut) =>
-        new(id, "EMP-T", clockIn, clockOut, false);
+    // breakMinutes省略時は 0（既存テストへの影響なし）
+    private static AttendanceLogDto Log(int id, DateTime clockIn, DateTime clockOut, int breakMinutes = 0) =>
+        new(id, "EMP-T", clockIn, clockOut, breakMinutes, false);
 
     // --- CalcPayroll ---
-
     [Fact]
     public void CalcPayroll_ExactlyEightHours_NoOvertime()
     {
         var logs = new[] { Log(1, D(9, 0), D(17, 0)) }; // 8h
         var result = AttendanceCalculator.CalcPayroll("EMP-T", 2026, 5, logs, 1000m, 1);
-
         Assert.Equal(8m,    result.TotalHours);
         Assert.Equal(0m,    result.OvertimeHours);
         Assert.Equal(8000m, result.RegularPay);
@@ -24,11 +22,10 @@ public class AttendanceCalculatorTests
     {
         var logs = new[] { Log(1, D(9, 0), D(19, 0)) }; // 10h
         var result = AttendanceCalculator.CalcPayroll("EMP-T", 2026, 5, logs, 1000m, 1);
-
-        Assert.Equal(10m,   result.TotalHours);
-        Assert.Equal(2m,    result.OvertimeHours);
-        Assert.Equal(8000m, result.RegularPay);
-        Assert.Equal(2500m, result.OvertimePay); // 2h * 1000 * 1.25
+        Assert.Equal(10m,    result.TotalHours);
+        Assert.Equal(2m,     result.OvertimeHours);
+        Assert.Equal(8000m,  result.RegularPay);
+        Assert.Equal(2500m,  result.OvertimePay); // 2h * 1000 * 1.25
         Assert.Equal(10500m, result.TotalPay);
     }
 
@@ -42,15 +39,35 @@ public class AttendanceCalculatorTests
             Log(2, new DateTime(2026, 5, 2, 9, 0, 0), new DateTime(2026, 5, 2, 19, 0, 0))
         };
         var result = AttendanceCalculator.CalcPayroll("EMP-T", 2026, 5, logs, 1000m, 1);
-
         Assert.Equal(18m,    result.TotalHours);
         Assert.Equal(2m,     result.OvertimeHours);
         Assert.Equal(16000m, result.RegularPay);
         Assert.Equal(2500m,  result.OvertimePay);
     }
 
-    // --- RoundDown ---
+    // --- 休憩控除 ---
+    [Fact]
+    public void CalcPayroll_WithBreak_DeductsFromWorkHours()
+    {
+        // 打刻9h・休憩60分 → 実労働8h・残業なし
+        var logs = new[] { Log(1, D(9, 0), D(18, 0), breakMinutes: 60) };
+        var result = AttendanceCalculator.CalcPayroll("EMP-T", 2026, 5, logs, 1000m, 1);
+        Assert.Equal(8m,    result.TotalHours);
+        Assert.Equal(0m,    result.OvertimeHours);
+        Assert.Equal(8000m, result.TotalPay);
+    }
 
+    [Fact]
+    public void CalcPayroll_WithBreakAdjustment_CorrectOvertime()
+    {
+        // 打刻11h・休憩45分 → 実労働10h15m → 残業2h15m
+        var logs = new[] { Log(1, D(9, 0), D(20, 0), breakMinutes: 45) };
+        var result = AttendanceCalculator.CalcPayroll("EMP-T", 2026, 5, logs, 1000m, 1);
+        Assert.Equal(10.25m, result.TotalHours);
+        Assert.Equal(2.25m,  result.OvertimeHours);
+    }
+
+    // --- RoundDown ---
     [Theory]
     [InlineData(480,  15, 480)]  // ちょうど8h → そのまま
     [InlineData(482,  15, 480)]  // 2分超過 → 切り捨て
@@ -60,8 +77,7 @@ public class AttendanceCalculatorTests
     public void RoundDown_ReturnsFlooredValue(decimal minutes, int unit, decimal expected) =>
         Assert.Equal(expected, AttendanceCalculator.RoundDown(minutes, unit));
 
-    // --- GetMonthlyAsync相当（純粋計算） ---
-
+    // --- CalcSummary ---
     [Fact]
     public void CalcSummary_CountsWorkDaysCorrectly()
     {
@@ -71,7 +87,6 @@ public class AttendanceCalculatorTests
             Log(2, new DateTime(2026, 5, 2, 9, 0, 0), new DateTime(2026, 5, 2, 17, 0, 0)),
         };
         var result = AttendanceCalculator.CalcSummary("EMP-T", 2026, 5, logs, 1);
-
         Assert.Equal(2,   result.WorkDays);
         Assert.Equal(16m, result.TotalHours);
         Assert.Equal(0m,  result.OvertimeHours);

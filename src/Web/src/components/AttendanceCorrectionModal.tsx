@@ -29,25 +29,32 @@ function fmtJst(iso: string | null): string {
   })
 }
 
+const BASE_BREAK_MINUTES = 60
+
 export function AttendanceCorrectionModal({
   log, employeeName, token, onClose, onSaved,
 }: Props) {
-  const [clockIn,  setClockIn]  = useState(toDatetimeLocal(log.clockIn))
-  const [clockOut, setClockOut] = useState(toDatetimeLocal(log.clockOut))
-  const [error,    setError]    = useState('')
-  const [saving,   setSaving]   = useState(false)
+  const [clockIn,           setClockIn]           = useState(toDatetimeLocal(log.clockIn))
+  const [clockOut,          setClockOut]          = useState(toDatetimeLocal(log.clockOut))
+  const [adjustmentMinutes, setAdjustmentMinutes] = useState(log.breakMinutes - BASE_BREAK_MINUTES)
+  const [error,             setError]             = useState('')
+  const [saving,            setSaving]            = useState(false)
+
+  const actualBreak = BASE_BREAK_MINUTES + adjustmentMinutes
 
   const handleSave = async () => {
-    if (!clockIn || !clockOut) { setError('出勤・退勤時刻は両方必須です。'); return }
-    if (clockIn >= clockOut)   { setError('退勤は出勤より後の時刻にしてください。'); return }
+    if (!clockIn || !clockOut)   { setError('出勤・退勤時刻は両方必須です。'); return }
+    if (clockIn >= clockOut)     { setError('退勤は出勤より後の時刻にしてください。'); return }
+    if (actualBreak < 0)         { setError('休憩時間は 0分 以上にしてください。'); return }
     setSaving(true)
     setError('')
     try {
       const res = await api.correctAttendance(
         log.id,
         {
-          clockIn:  new Date(clockIn).toISOString(),
-          clockOut: new Date(clockOut).toISOString(),
+          clockIn:      new Date(clockIn).toISOString(),
+          clockOut:     new Date(clockOut).toISOString(),
+          breakMinutes: actualBreak,
         },
         token
       )
@@ -74,6 +81,7 @@ export function AttendanceCorrectionModal({
         <div className="bg-slate-50 rounded-lg px-4 py-3 text-xs text-slate-600 mb-4 space-y-1">
           <div>現在の出勤: <span className="font-mono">{fmtJst(log.clockIn)}</span></div>
           <div>現在の退勤: <span className="font-mono">{fmtJst(log.clockOut)}</span></div>
+          <div>現在の休憩: <span className="font-mono">{log.breakMinutes}分</span></div>
         </div>
 
         <div className="space-y-3">
@@ -100,6 +108,32 @@ export function AttendanceCorrectionModal({
               className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm
                          focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
+          </div>
+
+          {/* 休憩調整 */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              休憩調整（申請 {BASE_BREAK_MINUTES}分 ± 分）
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={adjustmentMinutes}
+                onChange={e => setAdjustmentMinutes(Number(e.target.value))}
+                className="w-24 px-3 py-2 border border-slate-300 rounded-lg text-sm
+                           focus:outline-none focus:ring-2 focus:ring-emerald-500 text-right"
+                min={-BASE_BREAK_MINUTES}
+                max={180}
+              />
+              <span className="text-sm text-slate-500">
+                分　→　実際の休憩:
+                <span className={`ml-1 font-mono font-semibold ${
+                  actualBreak < 0 ? 'text-red-600' : 'text-slate-800'
+                }`}>
+                  {actualBreak}分
+                </span>
+              </span>
+            </div>
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}

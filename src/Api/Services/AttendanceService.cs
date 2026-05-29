@@ -1,4 +1,6 @@
+using AttendanceApi.Hubs;
 using Dapper;
+using Microsoft.AspNetCore.SignalR;
 using Npgsql;
 using System.Text;
 
@@ -10,12 +12,15 @@ public record AttendanceLogDto(
     string EmployeeId,
     DateTime? ClockIn,
     DateTime? ClockOut,
+    int BreakMinutes,
     bool IsCorrected
 );
 
+public record CurrentAttendanceDto(string EmployeeId, string EmployeeName, DateTime ClockIn);
+
 public record ClockInRequest(string EmployeeId);
 public record ClockOutRequest(string EmployeeId);
-public record CorrectAttendanceRequest(DateTime ClockIn, DateTime ClockOut);
+public record CorrectAttendanceRequest(DateTime ClockIn, DateTime ClockOut, int BreakMinutes = 60);
 
 public record MonthlySummaryDto(
     string EmployeeId,
@@ -40,12 +45,15 @@ public record MonthlyPayrollDto(
 public class AttendanceService
 {
     private readonly string _connectionString;
+    private readonly IHubContext<AttendanceHub> _hub;
     private static readonly DateOnly DemoStartDate = new(2025, 12, 1);
+    private const decimal OvertimeAlertThreshold = 5m; // 5h以上で警告（デモ用）
 
-    public AttendanceService(IConfiguration config)
+    public AttendanceService(IConfiguration config, IHubContext<AttendanceHub> hub)
     {
         _connectionString = config.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection が設定されていません。");
+        _hub = hub;
     }
 
     public async Task<bool> ClockInAsync(ClockInRequest req)
@@ -53,6 +61,7 @@ public class AttendanceService
         using var conn = new NpgsqlConnection(_connectionString);
         await conn.OpenAsync();
         using var tran = await conn.BeginTransactionAsync();
+        var inserted = false;
         try
         {
             const string checkSql = @"
@@ -66,13 +75,26 @@ public class AttendanceService
             const string sql = "INSERT INTO attendance_logs (employee_id, clock_in) VALUES (@EmployeeId, NOW())";
             await conn.ExecuteAsync(sql, new { req.EmployeeId }, tran);
             await tran.CommitAsync();
-            return true;
+            inserted = true;
         }
         catch
         {
             await tran.RollbackAsync();
             throw;
         }
+
+        if (inserted)
+        {
+            var name = await GetEmployeeNameAsync(req.EmployeeId);
+            await _hub.Clients.All.SendAsync("ClockUpdate", new
+            {
+                employeeId   = req.EmployeeId,
+                employeeName = name,
+                action       = "clockIn",
+                timestamp    = DateTime.Now,
+            });
+        }
+        return inserted;
     }
 
     public async Task<bool> ClockOutAsync(ClockOutRequest req)
@@ -80,6 +102,7 @@ public class AttendanceService
         using var conn = new NpgsqlConnection(_connectionString);
         await conn.OpenAsync();
         using var tran = await conn.BeginTransactionAsync();
+        var updated = false;
         try
         {
             const string findSql = @"
@@ -94,13 +117,27 @@ public class AttendanceService
             const string sql = "UPDATE attendance_logs SET clock_out = NOW() WHERE id = @Id";
             await conn.ExecuteAsync(sql, new { Id = id }, tran);
             await tran.CommitAsync();
-            return true;
+            updated = true;
         }
         catch
         {
             await tran.RollbackAsync();
             throw;
         }
+
+        if (updated)
+        {
+            var name = await GetEmployeeNameAsync(req.EmployeeId);
+            await _hub.Clients.All.SendAsync("ClockUpdate", new
+            {
+                employeeId   = req.EmployeeId,
+                employeeName = name,
+                action       = "clockOut",
+                timestamp    = DateTime.Now,
+            });
+            await CheckOvertimeAlertAsync(req.EmployeeId, name);
+        }
+        return updated;
     }
 
     public async Task<bool> CorrectAttendanceAsync(int id, CorrectAttendanceRequest req)
@@ -108,9 +145,12 @@ public class AttendanceService
         using var conn = new NpgsqlConnection(_connectionString);
         const string sql = @"
             UPDATE attendance_logs
-            SET clock_in = @ClockIn, clock_out = @ClockOut, is_corrected = TRUE
+            SET clock_in      = @ClockIn,
+                clock_out     = @ClockOut,
+                break_minutes = @BreakMinutes,
+                is_corrected  = TRUE
             WHERE id = @Id";
-        var rows = await conn.ExecuteAsync(sql, new { req.ClockIn, req.ClockOut, Id = id });
+        var rows = await conn.ExecuteAsync(sql, new { req.ClockIn, req.ClockOut, req.BreakMinutes, Id = id });
         return rows > 0;
     }
 
@@ -118,11 +158,24 @@ public class AttendanceService
     {
         using var conn = new NpgsqlConnection(_connectionString);
         const string sql = @"
-            SELECT id, employee_id, clock_in, clock_out, is_corrected
+            SELECT id, employee_id, clock_in, clock_out, break_minutes, is_corrected
             FROM attendance_logs
             WHERE employee_id = @EmployeeId
             ORDER BY clock_in DESC";
         return await conn.QueryAsync<AttendanceLogDto>(sql, new { EmployeeId = employeeId });
+    }
+
+    public async Task<IEnumerable<CurrentAttendanceDto>> GetCurrentAttendanceAsync()
+    {
+        using var conn = new NpgsqlConnection(_connectionString);
+        const string sql = @"
+            SELECT al.employee_id, e.name AS employee_name, al.clock_in
+            FROM attendance_logs al
+            JOIN employees e ON al.employee_id = e.id
+            WHERE DATE(al.clock_in) = CURRENT_DATE
+              AND al.clock_out IS NULL
+            ORDER BY al.clock_in";
+        return await conn.QueryAsync<CurrentAttendanceDto>(sql);
     }
 
     public async Task<MonthlySummaryDto> GetMonthlyAsync(string employeeId, int year, int month)
@@ -143,13 +196,20 @@ public class AttendanceService
     {
         var logs = await GetMonthlyLogsAsync(employeeId, year, month);
         var sb = new StringBuilder();
-        sb.AppendLine("日付,出勤時刻,退勤時刻,勤務時間(h),修正フラグ");
+        sb.AppendLine("日付,出勤時刻,退勤時刻,休憩(分),勤務時間(h),修正フラグ");
         foreach (var log in logs)
         {
-            var hours = log.ClockIn.HasValue && log.ClockOut.HasValue
-                ? (log.ClockOut.Value - log.ClockIn.Value).TotalHours.ToString("F2")
-                : "";
-            sb.AppendLine($"{log.ClockIn:yyyy-MM-dd},{log.ClockIn:HH:mm:ss},{log.ClockOut:HH:mm:ss},{hours},{log.IsCorrected}");
+            var workMinutes = log.ClockIn.HasValue && log.ClockOut.HasValue
+                ? Math.Max(0m, (decimal)(log.ClockOut.Value - log.ClockIn.Value).TotalMinutes - log.BreakMinutes)
+                : 0m;
+            var hours = workMinutes > 0 ? (workMinutes / 60).ToString("F2") : "";
+            sb.AppendLine(
+                $"{log.ClockIn:yyyy-MM-dd}," +
+                $"{log.ClockIn:HH:mm:ss}," +
+                $"{log.ClockOut:HH:mm:ss}," +
+                $"{log.BreakMinutes}," +
+                $"{hours}," +
+                $"{log.IsCorrected}");
         }
         return Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
     }
@@ -161,24 +221,20 @@ public class AttendanceService
 
         using var conn = new NpgsqlConnection(_connectionString);
 
-        // 1. 今日の打刻を削除
         await conn.ExecuteAsync(
             "DELETE FROM attendance_logs WHERE DATE(clock_in) = CURRENT_DATE");
 
-        // 2. 全社員を取得
         var employees = await conn.QueryAsync<EmployeeRecord>(
             "SELECT id, hourly_wage, round_unit_minutes FROM employees");
 
         foreach (var emp in employees)
         {
-            // 3. 既存の打刻日を取得
             var existingDates = (await conn.QueryAsync<DateTime>(
                 "SELECT DATE(clock_in) FROM attendance_logs WHERE employee_id = @Id AND clock_in IS NOT NULL",
                 new { Id = emp.Id }))
                 .Select(DateOnly.FromDateTime)
                 .ToHashSet();
 
-            // 4. 欠損平日をバックフィル
             var current = DemoStartDate;
             while (current <= yesterday)
             {
@@ -199,6 +255,33 @@ public class AttendanceService
     }
 
     // --- private ---
+    private async Task<string> GetEmployeeNameAsync(string employeeId)
+    {
+        using var conn = new NpgsqlConnection(_connectionString);
+        return await conn.ExecuteScalarAsync<string>(
+            "SELECT name FROM employees WHERE id = @Id", new { Id = employeeId }) ?? employeeId;
+    }
+
+    private async Task CheckOvertimeAlertAsync(string employeeId, string employeeName)
+    {
+        var now  = DateTime.Now;
+        var logs = await GetMonthlyLogsAsync(employeeId, now.Year, now.Month);
+        var emp  = await GetEmployeeRecordAsync(employeeId);
+        var summary = AttendanceCalculator.CalcSummary(
+            employeeId, now.Year, now.Month, logs, emp.RoundUnitMinutes);
+
+        if (summary.OvertimeHours >= OvertimeAlertThreshold)
+        {
+            await _hub.Clients.Group("admins").SendAsync("OvertimeAlert", new
+            {
+                employeeId    = employeeId,
+                employeeName  = employeeName,
+                overtimeHours = summary.OvertimeHours,
+                threshold     = OvertimeAlertThreshold,
+            });
+        }
+    }
+
     private static (DateTime clockIn, DateTime clockOut) GenerateWorkTime(DateOnly date, int roundUnit, Random rng)
     {
         var r = rng.NextDouble();
@@ -215,7 +298,7 @@ public class AttendanceService
     {
         using var conn = new NpgsqlConnection(_connectionString);
         const string sql = @"
-            SELECT id, employee_id, clock_in, clock_out, is_corrected
+            SELECT id, employee_id, clock_in, clock_out, break_minutes, is_corrected
             FROM attendance_logs
             WHERE employee_id = @EmployeeId
               AND clock_in IS NOT NULL

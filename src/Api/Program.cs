@@ -1,12 +1,12 @@
 using System.Text;
 using AttendanceApi.Endpoints;
+using AttendanceApi.Hubs;
 using AttendanceApi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
-
 var builder = WebApplication.CreateBuilder(args);
 
 // ── Swagger ───────────────────────────────────────────────────────────────
@@ -16,12 +16,12 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new() { Title = "Attendance API", Version = "v1" });
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Name        = "Authorization",
-        Type        = SecuritySchemeType.Http,
-        Scheme      = "bearer",
+        Name         = "Authorization",
+        Type         = SecuritySchemeType.Http,
+        Scheme       = "bearer",
         BearerFormat = "JWT",
-        In          = ParameterLocation.Header,
-        Description = "JWT Bearer トークンを入力 (例: eyJ...)"
+        In           = ParameterLocation.Header,
+        Description  = "JWT Bearer トークンを入力 (例: eyJ...)"
     });
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
@@ -47,7 +47,11 @@ builder.Services.AddCors(options =>
         var origins = builder.Configuration
             .GetSection("AllowedOrigins")
             .Get<string[]>() ?? ["http://localhost:5173"];
-        policy.WithOrigins(origins).AllowAnyMethod().AllowAnyHeader();
+        // SignalR は AllowCredentials() が必要
+        policy.WithOrigins(origins)
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
     });
 });
 
@@ -70,9 +74,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 
+// ── SignalR ───────────────────────────────────────────────────────────────
+builder.Services.AddSignalR();
+
 // ── Services ──────────────────────────────────────────────────────────────
 builder.Services.AddScoped<EmployeeService>();
 builder.Services.AddScoped<AttendanceService>();
+builder.Services.AddHostedService<DailyProfileUpdateService>();
+builder.Services.AddHostedService<LateStayCheckService>();
 
 var app = builder.Build();
 
@@ -92,6 +101,7 @@ app.UseSwaggerUI(options =>
     options.SwaggerEndpoint("/api-docs/v1/swagger.json", "Attendance API v1");
 });
 
+app.MapHub<AttendanceHub>("/hubs/attendance");
 app.MapAuthEndpoints();
 app.MapEmployeeEndpoints();
 app.MapAttendanceEndpoints();

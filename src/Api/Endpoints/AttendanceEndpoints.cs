@@ -1,7 +1,5 @@
 using AttendanceApi.Services;
-
 namespace AttendanceApi.Endpoints;
-
 public static class AttendanceEndpoints
 {
     public static void MapAttendanceEndpoints(this WebApplication app)
@@ -20,7 +18,6 @@ public static class AttendanceEndpoints
         })
         .WithName("ClockOut").WithTags("Attendances");
 
-        // 打刻修正は管理者のみ
         app.MapPut("/attendances/{id}", async (int id, CorrectAttendanceRequest req, AttendanceService svc) =>
         {
             var ok = await svc.CorrectAttendanceAsync(id, req);
@@ -28,6 +25,11 @@ public static class AttendanceEndpoints
         })
         .WithName("CorrectAttendance").WithTags("Attendances")
         .RequireAuthorization();
+
+        app.MapGet("/attendances/current",
+            async (AttendanceService svc) =>
+            Results.Ok(await svc.GetCurrentAttendanceAsync()))
+           .WithName("GetCurrentAttendance").WithTags("Attendances");
 
         app.MapGet("/attendances/{employeeId}/monthly",
             async (string employeeId, int? year, int? month, AttendanceService svc) =>
@@ -65,7 +67,6 @@ public static class AttendanceEndpoints
         })
         .WithName("GetMonthlyPayroll").WithTags("Attendances");
 
-        // デモリセット（認証不要）
         app.MapPost("/demo/reset", async (AttendanceService svc) =>
         {
             await svc.ResetForDemoAsync();

@@ -1,25 +1,27 @@
 import { useState, useEffect } from 'react'
-import { ClockPanel }    from './components/ClockPanel'
-import { MonthlySummary } from './components/MonthlySummary'
+import { ClockPanel }       from './components/ClockPanel'
+import { MonthlySummary }   from './components/MonthlySummary'
 import { AttendanceHistory } from './components/AttendanceHistory'
-import { AdminPanel }    from './components/AdminPanel'
-import { api }           from './api'
-import type { Employee } from './types'
+import { Dashboard }        from './components/Dashboard'
+import { AdminPanel }       from './components/AdminPanel'
+import { api }              from './api'
+import type { Employee }    from './types'
 
-type Tab = 'clock' | 'summary' | 'history' | 'admin'
+type Tab = 'clock' | 'summary' | 'history' | 'dashboard' | 'admin'
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: 'clock',   label: '打刻' },
-  { key: 'summary', label: '月次サマリー' },
-  { key: 'history', label: '打刻履歴' },
-  { key: 'admin',   label: '管理' },
+  { key: 'clock',     label: '打刻' },
+  { key: 'summary',   label: '月次サマリー' },
+  { key: 'history',   label: '打刻履歴' },
+  { key: 'dashboard', label: 'ダッシュボード' },
+  { key: 'admin',     label: '管理' },
 ]
 
 export default function App() {
-  const [tab, setTab]           = useState<Tab>('clock')
-  const [employees, setEmployees] = useState<Employee[]>([])
+  const [tab,        setTab]        = useState<Tab>('clock')
+  const [employees,  setEmployees]  = useState<Employee[]>([])
   const [selectedId, setSelectedId] = useState('')
-  const [token, setToken]       = useState<string | null>(
+  const [token,      setToken]      = useState<string | null>(
     () => localStorage.getItem('admin_token')
   )
 
@@ -109,6 +111,9 @@ export default function App() {
             isAdmin={isAdmin}
             token={token}
           />
+        )}
+        {tab === 'dashboard' && (
+          <Dashboard isAdmin={isAdmin} />
         )}
         {tab === 'admin' && (
           <AdminPanel token={token} onLogin={handleLogin} />
