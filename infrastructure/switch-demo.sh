@@ -6,7 +6,7 @@
 set -euo pipefail
 
 TARGET="${1:-}"
-WINFORMS="modernization-lab.service"
+WINFORMS="winforms-migration.service"
 WEBFORMS="webforms-migration.service"
 
 if [[ "$TARGET" != "winforms" && "$TARGET" != "webforms" ]]; then
