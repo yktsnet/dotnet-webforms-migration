@@ -48,7 +48,7 @@ export function Dashboard({ isAdmin }: Props) {
     }) => {
       setAlerts(prev => [{
         id:         `ot-${data.employeeId}-${Date.now()}`,
-        type:       'overtime',
+        type:       'overtime' as const,
         message:    `${data.employeeName}: 今月の残業 ${data.overtimeHours}h が ${data.threshold}h を超過`,
         receivedAt: new Date(),
       }, ...prev].slice(0, 20))
@@ -61,7 +61,7 @@ export function Dashboard({ isAdmin }: Props) {
     }) => {
       setAlerts(prev => [{
         id:         `ls-${data.employeeId}-${Date.now()}`,
-        type:       'lateStay',
+        type:       'lateStay' as const,
         message:    `${data.employeeName}: 平均退勤 ${data.avgClockout} から1時間超過（未退勤）`,
         receivedAt: new Date(),
       }, ...prev].slice(0, 20))
@@ -84,7 +84,7 @@ export function Dashboard({ isAdmin }: Props) {
     } else {
       conn.invoke('LeaveAdminGroup').catch(() => {})
     }
-  }, [isAdmin, connected]) // connected が true になったタイミングも拾う
+  }, [isAdmin, connected])
 
   const dismissAlert = (id: string) =>
     setAlerts(prev => prev.filter(a => a.id !== id))
