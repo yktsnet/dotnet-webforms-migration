@@ -1,0 +1,34 @@
+services:
+  db:
+    container_name: postgres_db
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-kintai_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-kintai_pass}
+      - POSTGRES_DB=${POSTGRES_DB:-KINTAI}
+    volumes:
+      - ./infrastructure/db/init:/docker-entrypoint-initdb.d
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kintai_user} -d ${POSTGRES_DB:-KINTAI}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  app:
+    container_name: attendance_app
+    build:
+      context: .
+      dockerfile: src/Api/Dockerfile
+    ports:
+      - "5154:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=db;Database=${POSTGRES_DB:-KINTAI};Username=${POSTGRES_USER:-kintai_user};Password=${POSTGRES_PASSWORD:-kintai_pass}
+    depends_on:
+      db:
+        condition: service_healthy
+volumes:
+  postgres_data:
