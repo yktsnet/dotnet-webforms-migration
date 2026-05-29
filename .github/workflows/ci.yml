@@ -10,6 +10,22 @@ jobs:
   test-api:
     name: .NET Test
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: kintai_user
+          POSTGRES_PASSWORD: kintai_pass
+          POSTGRES_DB: KINTAI
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
 
@@ -24,12 +40,18 @@ jobs:
       - name: Build
         run: dotnet build src/Api.Tests/AttendanceApi.Tests.csproj --no-restore
 
+      - name: Init DB
+        run: |
+          PGPASSWORD=kintai_pass psql -h 127.0.0.1 -U kintai_user -d KINTAI \
+            < infrastructure/db/init/01_schema.sql
+
       - name: Test
         run: dotnet test src/Api.Tests/AttendanceApi.Tests.csproj --no-build --verbosity normal
 
   build-web:
     name: React Build
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
