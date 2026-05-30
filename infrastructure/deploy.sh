@@ -1,42 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
-VPS="widget-vps"
-VPS_APP_DIR="/home/k_yamakawa/ops/webforms-migration"
-PUBLISH_DIR="./publish/api"
 
-echo "==> [1/4] .NET publish"
-dotnet publish src/Api/AttendanceApi.csproj \
-  -c Release \
-  -r linux-x64 \
-  --self-contained true \
-  -o "$PUBLISH_DIR"
+# .env 読み込み
+if [[ -f .env ]]; then
+  set -a; source .env; set +a
+fi
 
-echo "==> [2/4] React build"
-(cd src/Web && npm ci && npm run build)
+REMOTE="${DEPLOY_HOST:?DEPLOY_HOST が未設定（.env を確認）}"
+APP_DIR="/home/${DEPLOY_USER:?DEPLOY_USER が未設定（.env を確認）}/apps/webforms-migration"
 
-echo "==> [3/4] rsync API"
+echo "==> [1/2] rsync"
 rsync -az --delete \
-  -e "ssh -o ClearAllForwardings=yes" \
-  --exclude='appsettings*.json' \
-  --exclude='wwwroot/' \
-  "$PUBLISH_DIR/" \
-  "$VPS:$VPS_APP_DIR/"
+  --exclude='.git/' \
+  --exclude='node_modules/' \
+  --exclude='src/Web/dist/' \
+  --exclude='publish/' \
+  --exclude='.env' \
+  ./ \
+  "$REMOTE:$APP_DIR/"
 
-echo "==> [4/4] rsync frontend"
-rsync -az --delete \
-  -e "ssh -o ClearAllForwardings=yes" \
-  src/Web/dist/ \
-  "$VPS:$VPS_APP_DIR/wwwroot/"
+rsync -az .env "$REMOTE:$APP_DIR/.env"
 
-echo ""
-echo "==> restart"
-ssh -o ClearAllForwardings=yes "$VPS" "
-  if systemctl is-active --quiet webforms-migration.service; then
-    sudo systemctl restart webforms-migration.service
-    echo '  webforms-migration.service: restarted'
-  else
-    echo '  webforms-migration.service: inactive - skipped'
-  fi
-"
+echo "==> [2/2] docker compose up --build"
+ssh "$REMOTE" "cd '$APP_DIR' && docker compose up -d --build"
 
 echo "==> done"

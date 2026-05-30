@@ -1,42 +1,31 @@
 #!/usr/bin/env bash
-# VPS 初回セットアップ: systemd ユニット登録
-# 実行場所: VPS 上で直接実行
+# NixOS 初回セットアップ
+# 実行場所: サーバー上で直接実行
 set -euo pipefail
 
-APP_DIR="/home/k_yamakawa/ops/webforms-migration"
-SERVICE="webforms-migration"
-USER="k_yamakawa"
+APP_DIR="/home/${USER}/apps/webforms-migration"
 
-echo "==> [1/3] ディレクトリ作成"
-mkdir -p "$APP_DIR/wwwroot"
+echo "==> [1/2] Docker 確認"
+if ! command -v docker &>/dev/null; then
+  cat <<EOF
 
-echo "==> [2/3] systemd ユニット登録"
-sudo tee /etc/systemd/system/${SERVICE}.service > /dev/null <<UNIT
-[Unit]
-Description=WebForms Migration App (.NET 8)
-After=network.target
+Docker が未インストール。/etc/nixos/configuration.nix に以下を追加:
 
-[Service]
-User=${USER}
-WorkingDirectory=${APP_DIR}
-ExecStart=${APP_DIR}/AttendanceApi
-Environment="ASPNETCORE_URLS=http://+:5153"
-Restart=always
-RestartSec=5
+  virtualisation.docker.enable = true;
+  users.users.${USER}.extraGroups = [ "docker" ];
 
-[Install]
-WantedBy=multi-user.target
-UNIT
+適用:
+  sudo nixos-rebuild switch
 
-echo "==> [3/3] サービス有効化"
-sudo systemctl daemon-reload
-sudo systemctl enable ${SERVICE}.service
+再ログイン後、このスクリプトを再実行。
+
+EOF
+  exit 1
+fi
+
+echo "==> [2/2] ディレクトリ作成"
+mkdir -p "$APP_DIR"
 
 echo "==> done"
 echo ""
-echo "=========================================="
-echo " 初回起動:"
-echo "   sudo systemctl start ${SERVICE}.service"
-echo " 状態確認:"
-echo "   systemctl status ${SERVICE}.service"
-echo "=========================================="
+echo "次: Mac 側で ./infrastructure/deploy.sh を実行"
