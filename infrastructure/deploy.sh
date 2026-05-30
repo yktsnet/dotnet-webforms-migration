@@ -7,7 +7,7 @@ fi
 
 REMOTE="${DEPLOY_HOST:-sv6}"
 REMOTE_USER="${DEPLOY_USER:-sv6}"
-APP_PATH="/home/${REMOTE_USER}/dotfiles/apps/corp/attendance-system-migration"
+APP_PATH="/home/${REMOTE_USER}/github-public/attendance-system-migration"
 
 echo "==> [1/2] .env 転送"
 rsync -az .env "$REMOTE:$APP_PATH/.env"
