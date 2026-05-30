@@ -39,3 +39,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 PLAN.md
+
+# --- Claude project files ---
+.claude/
+CLAUDE.md
+context/
+issues/
