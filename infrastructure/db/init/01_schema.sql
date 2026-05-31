@@ -33,5 +33,5 @@ INSERT INTO employees (id, name, hourly_wage, round_unit_minutes) VALUES
 ON CONFLICT DO NOTHING;
 -- admin / admin123
 INSERT INTO admin_users (username, password_hash) VALUES
-    ('admin', '$2a$11$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lh23')
+    ('admin', '$2b$11$V0NT2QI4H/Rf6ARyeUGCcOe9Uw7PlCnZ1u5nMHhLDMrjtpfbUBeXS')
 ON CONFLICT DO NOTHING;
